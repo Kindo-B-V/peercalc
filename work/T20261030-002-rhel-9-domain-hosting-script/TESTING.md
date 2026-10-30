@@ -4,7 +4,7 @@
 - Title: RHEL 9 domain hosting script
 - Stage: test
 - Description: Domain-input RHEL 9 Docker hosting with automatic HTTPS and production identity
-- Status: Testing
+- Status: Done
 - Priority: Medium
 - Project URL: https://github.com/Kindo-B-V/peercalc
 - Notion Issue URL: -
@@ -35,3 +35,19 @@ Generic local report: `/tmp/peercalc-hosting-https-verification.json`.
 No private source estimate was used in hosting tests. Actual RHEL installation,
 SELinux enforcing, firewalld integration and public DNS/ACME remain target-server
 verification, explicitly documented in `docs/HOSTING_RHEL9.md`.
+
+## Delivery Completion
+
+All steps completed: Yes
+
+Issue fully fixed in code: Yes
+
+These statements apply to the requested script/source delivery, not to an
+unrequested deployment on an unspecified remote server. Source commit
+`e26341b` passed [remote CI](https://github.com/Kindo-B-V/peercalc/actions/runs/41067206446).
+The originating application's legacy format verification remains a separate
+blocked ticket; it is not marked complete by this delivery.
+
+## 2026-10-30T14:59:33
+
+Delivered hosting installer, production Compose and Dutch operating documentation. Eight setup/config tests and isolated real HTTPS workflows pass; remote CI e26341b passed (run 41067206446). Actual target RHEL/SELinux/firewalld and public ACME issuance are not claimed; no target server was provided. Existing local data and stack remain untouched.

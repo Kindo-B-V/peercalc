@@ -4,7 +4,7 @@
 - Title: RHEL 9 domain hosting script
 - Stage: execute
 - Description: Domain-input RHEL 9 Docker hosting with automatic HTTPS and production identity
-- Status: Testing
+- Status: Done
 - Priority: Medium
 - Project URL: https://github.com/Kindo-B-V/peercalc
 - Notion Issue URL: -
@@ -30,3 +30,18 @@ no application origin helper or unnecessary runtime binding was retained.
 
 The local stack and private documents were not changed. Isolated test containers
 and synthetic test volumes were removed after verification.
+
+## What Changed
+
+Added `scripts/host-rhel9.sh`, setup/configuration tests, a separate production
+Compose profile, Caddy/nginx configuration and Dutch operating documentation.
+CI now validates the new setup tests and hosting configuration as well.
+
+## Why This Fixes It
+
+A domain is sufficient to configure a fresh RHEL 9 installation without exposing
+the local-development profile. Public HTTPS and secure OIDC endpoints are paired
+with persistent production identity storage and private application services.
+Repeat runs use the same secrets and project rather than replacing user data.
+
+Code fix confirmed: Yes

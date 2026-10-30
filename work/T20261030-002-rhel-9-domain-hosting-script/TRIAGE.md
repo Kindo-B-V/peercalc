@@ -4,7 +4,7 @@
 - Title: RHEL 9 domain hosting script
 - Stage: triage
 - Description: Domain-input RHEL 9 Docker hosting with automatic HTTPS and production identity
-- Status: Testing
+- Status: Done
 - Priority: Medium
 - Project URL: https://github.com/Kindo-B-V/peercalc
 - Notion Issue URL: -
