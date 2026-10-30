@@ -1,0 +1,24 @@
+PeerCalc includes an Apache-2.0-licensed compatibility patch to Jackcess 5.0.4,
+Copyright (c) 2005 Health Market Science, Inc.
+
+Official source artifact:
+https://repo.maven.apache.org/maven2/com/healthmarketscience/jackcess/jackcess/5.0.4/jackcess-5.0.4-sources.jar
+SHA-256: 4de1bc2f1663b0946ce39057dd90eace355f4f74b8f818c0fe167f0c65815428
+
+Modified class: com.healthmarketscience.jackcess.impl.IndexData.
+Change: skip index DELETE/ADD only when old and new encoded keys are byte-identical
+for the same row id. Actual key changes retain Jackcess's original update and
+constraint path. This does not repair or remove existing source indexes.
+
+scripts/PatchJackcess.java verifies and extracts the pinned official source,
+applies the documented insertion, and places the class in generated-sources.
+Maven tests and the shaded Docker artifact both use this generated class ahead
+of the dependency's original class. The full original source is not vendored.
+The source copyright/license header is retained and the modification is marked.
+See LICENSES/Apache-2.0.txt for the applicable license.
+
+The PeerCalc converter application and bundled wpcalc-template.calc are
+LGPL-3.0-only. The template and initial column mapping originate from
+https://github.com/OpenAEC-Foundation/open-calc-studio . Refer to the repository
+root NOTICE.md for the pinned upstream revision and source provenance.
+LICENSES/LGPL-3.0.txt and LICENSES/GPL-3.0.txt contain the applicable license texts.

@@ -1,0 +1,114 @@
+// LGPL-3.0-only. Adapted import path from OpenAEC Foundation Open Calc Studio.
+import type { CostItem, RowType } from './types';
+
+/** Build a single staart_* CostItem with sensible defaults. */
+export function makeStaartItem(
+  rowType: RowType,
+  description: string,
+  pct: number | null,
+  sortOrder: number,
+): CostItem {
+  return {
+    id: crypto.randomUUID(),
+    parentId: null,
+    sortOrder,
+    code: '',
+    description,
+    unit: pct !== null ? '%' : 'st',
+    quantity: pct,
+    materialPrice: null,
+    laborPrice: null,
+    unitPrice: 0,
+    total: 0,
+    isCollapsed: false,
+    depth: 0,
+    notes: '',
+    ifcGuid: '',
+    rowType,
+    staartPercentage: pct,
+    nr: '',
+    normQuantity: null,
+    normFactor: null,
+    normDivisor: null,
+    normUnitPrice: null,
+    resourceType: null,
+    resourceLibraryId: null,
+    verrekenbaar: null,
+    tariefGroep: null,
+  };
+}
+
+interface CachedStaartRow {
+  label?: string;
+  percentage?: number | null;
+}
+
+/** Try to find a cached staart row's percentage by (case-insensitive) label substring.
+ *  `exclude` skips rows whose label bevat die tekst (bv. 'btw' zonder 'laag'). */
+function findPct(rows: CachedStaartRow[] | undefined, label: string, exclude?: string): number | null {
+  if (!rows) return null;
+  const needle = label.toLowerCase();
+  const row = rows.find((r) => {
+    const l = (r?.label ?? '').toLowerCase();
+    return l.includes(needle) && (!exclude || !l.includes(exclude));
+  });
+  if (!row) return null;
+  return row.percentage ?? null;
+}
+
+/**
+ * Synthesize the standard set of staart_* CostItems.
+ * Tries cached `schedule.staartRows` first (preserves user's percentages).
+ * Falls back to standard NL bouw values if not present or label not found.
+ */
+export function synthesizeStaartItems(schedule: any): CostItem[] {
+  const cached = (schedule?.staartRows as CachedStaartRow[] | undefined) ?? undefined;
+
+  const akOaPct        = findPct(cached, 'algemene kosten over onderaanneming') ?? 9;
+  const abkPct         = findPct(cached, 'algemene bedrijfskosten') ?? 6;
+  const garantiesPct   = findPct(cached, 'garantie') ?? 2;
+  const wvpmPct        = findPct(cached, 'werkvoorbereiding') ?? 2;
+  const risicoPct      = findPct(cached, 'risico') ?? 3;
+  const winstPct       = findPct(cached, 'winst') ?? 5;
+  const verzekeringPct = findPct(cached, 'verzekering') ?? 0.5;
+  const btwLaagPct     = findPct(cached, 'btw laag') ?? 9;
+  const btwPct         = findPct(cached, 'btw hoog') ?? findPct(cached, 'btw', 'laag') ?? 21;
+
+  let n = 9000;
+  return [
+    makeStaartItem('staart_ak_oa',       'Algemene kosten over onderaanneming:', akOaPct,        n++),
+    makeStaartItem('staart_abk',         'Algemene bedrijfskosten:',              abkPct,         n++),
+    makeStaartItem('staart_garanties',   'Garanties:',                            garantiesPct,   n++),
+    makeStaartItem('staart_wvpm',        'Werkvoorbereiding & projectmanagement', wvpmPct,        n++),
+    makeStaartItem('staart_risico',      'Risico:',                               risicoPct,      n++),
+    makeStaartItem('staart_winst',       'Winst:',                                winstPct,       n++),
+    makeStaartItem('staart_verzekering', 'Verzekering:',                          verzekeringPct, n++),
+    makeStaartItem('staart_btw_laag',    'Btw laag:',                             btwLaagPct,     n++),
+    makeStaartItem('staart_btw',         'Btw hoog:',                             btwPct,         n++),
+    makeStaartItem('staart_afronding',   'Afronding',                             null,           n++),
+  ];
+}
+
+/**
+ * Zorg dat een bestaande staart een "Btw laag"-regel heeft. Bestaande
+ * begrotingen van vóór het lage tarief krijgen er bij het laden één bij
+ * (9%, zonder grondslag → draagt € 0 bij tot de grondslag is ingevuld).
+ * Muteert niets: retourneert dezelfde array of een nieuwe met de extra rij.
+ */
+export function ensureBtwLaagItem(items: CostItem[]): CostItem[] {
+  const hasStaart = items.some((i) => i.rowType?.startsWith('staart_'));
+  if (!hasStaart) return items;
+  if (items.some((i) => i.rowType === 'staart_btw_laag')) return items;
+  const btwIdx = items.findIndex((i) => i.rowType === 'staart_btw');
+  if (btwIdx < 0) return items;
+  const btw = items[btwIdx];
+  const laag = makeStaartItem('staart_btw_laag', 'Btw laag:', 9, btw.sortOrder);
+  // Direct vóór de hoog-regel; alles vanaf de hoog-regel schuift één plek op.
+  return [
+    ...items.slice(0, btwIdx),
+    laag,
+    ...items.slice(btwIdx).map((i) =>
+      i.rowType?.startsWith('staart_') ? { ...i, sortOrder: i.sortOrder + 1 } : i,
+    ),
+  ];
+}

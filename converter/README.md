@@ -1,0 +1,13 @@
+# WPCalc Converter
+
+Java 17 + Jackcess produce genuine Access MDB `.calc` files without Microsoft Office, ODBC, Wine, or Windows. The web API validates and recalculates the native document before calling this internal service.
+
+Run with the repository Docker Compose stack. The converter must not have a public host port; only the web service should reach it. Set `CALC_CONVERTER_URL=http://converter:8082` in the web service and `PORT=8082` in the converter. Both receive the same randomly generated `CALC_CONVERTER_TOKEN` (minimum 32 characters). Startup fails without it. Do not commit token values.
+
+`POST /export` takes a native ProjectFile JSON body with `Authorization: Bearer <token>` and returns `application/vnd.ms-access`. Maximum body size is 20 MiB, original embedded database 12 MiB, two simultaneous conversions. All request files use random server-controlled temporary paths and are removed after success or error. `GET /health` returns readiness without secrets or document data.
+
+Retained `wpcalcSource` databases are edited rather than recreated: unknown tables and unedited columns are preserved. Known rows match `item.wpcalcRowId`. Explicit `wpcalcSource.importedRowIds` and `importedStaartRowIds` identify deleted mapped rows; skipped legacy records are not mistaken for user deletions. Unmapped source rows and blank separators remain. A new project uses the upstream empty MDB template. Files with multiple calculations, variants, nested posts, multiplied bewakingspost containers, priced posts without rows, and incompatible resource-based norms are rejected rather than silently flattened or mispriced. Direct-cost surcharge bases, per-row VAT classification, target-total/automatic-step rounding and nontrivial norm factors/divisors are also rejected until a verified mapping exists. These guards are current compatibility gaps, not full WPCalc interoperability. Native `.ocs` exports remain available for these projects.
+
+The converter does not execute client commands or shell queries. Keep the container unprivileged, memory-limited, and internal; Access parsing is a native-format trust boundary. DB transport failures elsewhere may leave unreferenced object-storage versions; they are not converter temporary files.
+
+Tests: `mvn test` (or `docker build .`, which runs them). Java column mappings derive from `OpenAEC-Foundation/open-calc-studio/src-tauri/src/wpcalc_export.rs`; `src/main/resources/wpcalc-template.calc` is copied from that project's `src-tauri/resources/wpcalc-template.calc`. Upstream LGPL-3.0-only terms and notices in the repository root apply. Jackcess is Apache-2.0; Jackson is Apache-2.0.

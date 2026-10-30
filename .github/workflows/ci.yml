@@ -1,0 +1,30 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: node --test scripts/configure-local.test.mjs
+      - run: npm ci --no-audit --no-fund
+        working-directory: web
+      - run: npm run typecheck && npm test && npm run build
+        working-directory: web
+      - run: docker build -t peercalc-converter:ci converter
+      - run: node scripts/configure-local.mjs && docker compose config --quiet
+      - run: docker compose up --build -d --wait
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run test:e2e
+        working-directory: web
+      - if: failure()
+        run: docker compose logs --tail=60
+      - if: always()
+        run: docker compose down

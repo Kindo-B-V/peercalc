@@ -1,0 +1,48 @@
+{
+  "realm": "peercalc",
+  "displayName": "PeerCalc",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "passwordPolicy": "length(12)",
+  "clients": [{
+    "clientId": "peercalc",
+    "name": "PeerCalc",
+    "enabled": true,
+    "protocol": "openid-connect",
+    "publicClient": false,
+    "secret": "${PEERCALC_CLIENT_SECRET}",
+    "standardFlowEnabled": true,
+    "directAccessGrantsEnabled": false,
+    "redirectUris": ["${PEERCALC_ORIGIN}/oauth2/callback"],
+    "webOrigins": ["${PEERCALC_ORIGIN}"],
+    "attributes": {
+      "pkce.code.challenge.method": "S256",
+      "post.logout.redirect.uris": "${PEERCALC_ORIGIN}/*"
+    },
+    "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
+    "protocolMappers": [{
+      "name": "peercalc-audience",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "config": {
+        "included.client.audience": "peercalc",
+        "id.token.claim": "true",
+        "access.token.claim": "true"
+      }
+    }]
+  }],
+  "users": [{
+    "username": "owner@peercalc.local",
+    "email": "owner@peercalc.local",
+    "firstName": "Local",
+    "lastName": "Owner",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [{ "type": "password", "value": "${PEERCALC_OWNER_PASSWORD}", "temporary": false }]
+  }]
+}
