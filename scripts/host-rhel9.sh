@@ -28,7 +28,7 @@ check_rhel() {
     local ID='' VERSION_ID=''
     # This is the operating system's root-owned release file, not user input.
     source "${1:-/etc/os-release}"
-    [[ $ID == rhel && $VERSION_ID =~ ^9(\.|$) ]] || fail 'Dit script is bedoeld voor RHEL 9.'
+    [[ ( $ID == rhel || $ID == rocky ) && $VERSION_ID =~ ^9(\.|$) ]] || fail "Dit script ondersteunt RHEL 9 en Rocky Linux 9; aangetroffen: ${ID:-onbekend} ${VERSION_ID:-onbekend}. Controleer /etc/os-release."
 }
 
 configure_hosting() (

@@ -32,9 +32,9 @@ This configuration uses local HTTP, development-mode Keycloak, and unverified
 registration emails. Ownership uses the signed OIDC subject, not email. It is
 not a public production deployment. See [SECURITY.md](SECURITY.md).
 
-## RHEL 9 Hosting
+## RHEL 9 / Rocky 9 Hosting
 
-For a RHEL 9 server with a public domain, use the separate HTTPS hosting setup:
+For a RHEL 9 or Rocky Linux 9 server with a public domain, use the separate HTTPS hosting setup:
 
 ```sh
 sudo ./scripts/host-rhel9.sh calculatie.your-domain.nl

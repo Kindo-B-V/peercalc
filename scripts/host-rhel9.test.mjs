@@ -26,11 +26,20 @@ test('domain validation blocks URL, shell/config injection, IPs, reserved names 
   }
 });
 
-test('platform guard accepts RHEL 9 only', () => {
+test('platform guard accepts RHEL 9 and Rocky 9, not other distributions or major versions', () => {
   const root = mkdtempSync(join(tmpdir(), 'peercalc-os-'));
   try {
     const os = join(root, 'os-release');
-    for (const [content, valid] of [['ID="rhel"\nVERSION_ID="9.7"\n', true], ['ID=rhel\nVERSION_ID=8.10\n', false], ['ID=ubuntu\nVERSION_ID=24.04\n', false]]) {
+    for (const [content, valid] of [
+      ['ID="rhel"\nVERSION_ID="9.7"\n', true],
+      ['NAME="Rocky Linux"\nVERSION="9.5 (Blue Onyx)"\nID="rocky"\nID_LIKE="rhel centos fedora"\nVERSION_ID="9.5"\nPLATFORM_ID="platform:el9"\n', true],
+      ['ID=rocky\nVERSION_ID=9\n', true],
+      ['ID=rhel\nVERSION_ID=8.10\n', false],
+      ['ID=rocky\nVERSION_ID=8.10\n', false],
+      ['ID=rocky\nVERSION_ID=10.0\n', false],
+      ['ID=unknown\nID_LIKE="rhel centos fedora"\nVERSION_ID=9.5\n', false],
+      ['ID=ubuntu\nVERSION_ID=24.04\n', false],
+    ]) {
       writeFileSync(os, content);
       assert.equal(run('check_rhel "$1"', os).status === 0, valid);
     }

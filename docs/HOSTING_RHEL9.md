@@ -1,4 +1,4 @@
-# Hosting Op RHEL 9
+# Hosting Op RHEL 9 En Rocky Linux 9
 
 Het script installeert een aparte Docker-hostingomgeving voor een publiek
 domein. Het publiceert alleen TCP 80 en 443, met automatische HTTPS via Caddy.
@@ -7,7 +7,7 @@ of gemigreerd. Gebruik een aparte server/installatie voor hosting.
 
 ## Vooraf
 
-- RHEL 9 met root/sudo, werkende RHEL-repositories en voldoende RAM en
+- RHEL 9 of Rocky Linux 9 met root/sudo, werkende distributierepositories en voldoende RAM en
   schijfruimte voor de lokale builds en acht containers.
 - Zet de A- en eventuele AAAA-records van het domein naar deze server. Verwijder
   een AAAA-record dat naar een andere of onbereikbare server wijst.
@@ -16,6 +16,11 @@ of gemigreerd. Gebruik een aparte server/installatie voor hosting.
 - Een actuele Docker Engine met Compose-plugin wordt geinstalleerd als Docker
   ontbreekt. Bestaande Podman/runc-installaties worden niet verwijderd. Los
   packageconflicten eerst bewust op volgens de [Docker RHEL-installatiegids](https://docs.docker.com/engine/install/rhel/).
+
+Rocky Linux 9 wordt expliciet herkend, inclusief 9.5. Het script gebruikt de
+Docker RHEL-repository die ook de [officiele Rocky-installatiegids](https://docs.rockylinux.org/9/gemstones/containers/docker/)
+voorschrijft. Andere distributies en hoofdversies worden niet alleen op basis
+van `ID_LIKE=rhel` toegelaten. De bestaande scriptnaam blijft behouden.
 
 ## Installeren
 
@@ -136,7 +141,7 @@ back-ups, bewaartermijnen en capaciteit voordat je er zakelijk op vertrouwt.
 ## Verificatiegrens
 
 Het script en de configuratie krijgen automatische tests, plus een geisoleerde
-HTTPS-test van de containerstack. Installatie op een echte RHEL 9-machine,
+HTTPS-test van de containerstack. Installatie op een echte RHEL 9- of Rocky 9-machine,
 SELinux enforcing, provider-DNS/firewall en publieke ACME-uitgifte moeten op de
 doelserver worden gecontroleerd. Er is geen externe server door dit werk gehost.
 De bestaande beperkingen van WPCalc-uitwisseling blijven gelden; zie
