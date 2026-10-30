@@ -62,8 +62,11 @@ their descriptions. The supplied source still passes the complete private
 round-trip. Advanced mappings remain open, not declared supported by rejection.
 Official vendor trial access requires contact details and CAPTCHA; no request
 was submitted. The user was asked to recalculate the private exported file in
-the original application. Until that evidence is available, the full goal stays
-active rather than claiming certified legacy interoperability.
+the original application and confirmed they cannot test that software. Do not
+depend on that user-operated check or request another private fixture. An
+authorized target runtime or additional authoritative format evidence is needed
+to close the remaining mappings. Until that evidence is available, the full goal
+stays active rather than claiming certified legacy interoperability.
 
 ## Latest User Direction
 
