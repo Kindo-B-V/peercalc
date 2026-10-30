@@ -18,6 +18,20 @@ regressions; all 9 setup/configuration tests and ShellCheck error checks pass.
 Remote CI for the first guard fix (`dc707e1`) passed; the subsequent package fix
 is validated separately. No changes were made on the user's server.
 
+The corrected helper was executed inside the official Rocky 9.5 container:
+prerequisite installation and dependency resolution for all five Docker packages
+passed against the configured RHEL repository. The Docker transaction was
+intentionally declined; this was not a systemd, firewall or full host deployment.
+
+All steps completed: Yes
+
+Issue fully fixed in code: Yes
+
+Both reported/reproduced installer defects are fixed. Source commit `3a11e1d`
+passed remote CI run 41073802418, including all setup/configuration, application,
+converter build and browser checks. The user's actual server installation still
+needs to be rerun; no remote access or target-host modifications were performed.
+
 ## 2026-10-30T15:34:51
 
 Accept Rocky Linux 9 explicitly alongside RHEL 9; keep official RHEL Docker repository per Rocky documentation. User Rocky 9.5 release fixture fails before and passes after. All eight setup/config tests and ShellCheck error checks pass. Other distributions and major versions remain rejected; no remote host changes performed.
