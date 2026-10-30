@@ -4,7 +4,7 @@
 - Title: Rocky Linux 9 hosting compatibility
 - Stage: triage
 - Description: -
-- Status: Testing
+- Status: Done
 - Priority: Medium
 - Project URL: https://github.com/Kindo-B-V/peercalc
 - Notion Issue URL: -

@@ -4,12 +4,14 @@
 - Title: Rocky Linux 9 hosting compatibility
 - Stage: test
 - Description: -
-- Status: Testing
+- Status: Done
 - Priority: Medium
 - Project URL: https://github.com/Kindo-B-V/peercalc
 - Notion Issue URL: -
 - Agent Question: -
 - User Answer: -
+
+## Verification
 
 The actual official `rockylinux/rockylinux:9.5` container passed platform
 detection. Its initial prerequisite transaction reproduced the curl-minimal
@@ -35,3 +37,7 @@ needs to be rerun; no remote access or target-host modifications were performed.
 ## 2026-10-30T15:34:51
 
 Accept Rocky Linux 9 explicitly alongside RHEL 9; keep official RHEL Docker repository per Rocky documentation. User Rocky 9.5 release fixture fails before and passes after. All eight setup/config tests and ShellCheck error checks pass. Other distributions and major versions remain rejected; no remote host changes performed.
+
+## 2026-10-30T15:45:10
+
+Fixed Rocky 9 platform recognition and reproduced curl-minimal conflict without removing packages. Nine setup/config tests and ShellCheck error checks pass; actual Rocky 9.5 container passes guard, prerequisite installation and Docker dependency resolution. CI 3a11e1d/run41073802418 passes. User server not accessed or modified; rerun latest script after git pull.

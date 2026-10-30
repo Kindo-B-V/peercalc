@@ -4,12 +4,14 @@
 - Title: Rocky Linux 9 hosting compatibility
 - Stage: plan
 - Description: -
-- Status: Testing
+- Status: Done
 - Priority: Medium
 - Project URL: https://github.com/Kindo-B-V/peercalc
 - Notion Issue URL: -
 - Agent Question: -
 - User Answer: -
+
+## Implementation
 
 Keep the existing script name and Docker installation path. Explicitly accept
 `ID=rocky` with major version 9, without accepting arbitrary ID_LIKE derivatives.

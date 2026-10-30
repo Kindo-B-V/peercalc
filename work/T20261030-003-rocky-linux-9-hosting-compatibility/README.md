@@ -2,7 +2,7 @@
 
 - Stage: test
 - Description: -
-- Status: Testing
+- Status: Done
 - Priority: Medium
 - Project URL: https://github.com/Kindo-B-V/peercalc
 - Notion Issue URL: -
@@ -10,7 +10,7 @@
 - User Answer: -
 - ClaimedBy: -
 - ClaimToken: -
-- Updated: 2026-10-30T15:34:51
+- Updated: 2026-10-30T15:45:10
 
 ## Files
 - TRIAGE.md
