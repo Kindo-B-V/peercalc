@@ -4,7 +4,7 @@
 - Title: Automatic free hosting backend port
 - Stage: plan
 - Description: -
-- Status: Testing
+- Status: Done
 - Priority: Medium
 - Project URL: https://github.com/Kindo-B-V/peercalc
 - Notion Issue URL: -
