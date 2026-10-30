@@ -66,7 +66,27 @@ the original application and confirmed they cannot test that software. Do not
 depend on that user-operated check or request another private fixture. An
 authorized target runtime or additional authoritative format evidence is needed
 to close the remaining mappings. Until that evidence is available, the full goal
-stays active rather than claiming certified legacy interoperability.
+is not achieved; passing our readers is not certified legacy interoperability.
+
+## External Blocker Audit
+
+The same original-application/authoritative-encoding gate remained present over
+three consecutive goal turns: the initial source/CI delivery, the follow-up
+native fidelity fixes, and this final revalidation. The preceding turn made
+concrete progress through pricing fixes and stronger durability evidence; it
+did not remove this external blocker.
+
+Revalidation on 2026-10-30 confirms a clean worktree, successful source CI and
+all six local services running. No Windows installer exists in the workspace.
+The official trial still requires a contact form and CAPTCHA, and the user
+confirmed they cannot perform original-software checks. No authorized target
+runtime or additional authoritative mapping evidence is currently available.
+
+The remaining exact legacy interoperability work is blocked, not complete.
+Unknown control bits will not be guessed and a green self-round-trip will not
+be substituted for target recalculation. Resume that work when authorized
+software access or authoritative encoding evidence becomes available. The
+usable local app and private documents remain available in the meantime.
 
 ## Latest User Direction
 
