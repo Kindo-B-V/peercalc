@@ -4,6 +4,8 @@ umask 077
 
 fail() { printf 'Fout: %s\n' "$*" >&2; exit 1; }
 
+source "$(dirname -- "${BASH_SOURCE[0]}")/hosting-ports.sh"
+
 validate_domain() {
     local domain=$1 label
     [[ ${#domain} -le 253 && $domain == *.* && $domain != *..* && $domain =~ ^[a-z0-9.-]+$ ]] || fail 'Geef een volledige domeinnaam zonder https://, poort of pad.'
@@ -102,13 +104,22 @@ clear_hosting_overrides() {
     for key in "${!PEERCALC_@}" CALC_CONVERTER_TOKEN ACME_EMAIL; do unset "$key"; done
 }
 
+write_proxy_examples() {
+    local root=$1 domain=$2 port=$3
+    validate_domain "$domain"
+    [[ $port =~ ^[0-9]+$ && $port -ge 1024 && $port -le 65535 ]] || fail 'Ongeldige proxy-backendpoort.'
+    [[ ! -L $root/.hosting/nginx-location.conf && ! -L $root/.hosting/Caddyfile.proxy ]] || fail 'Proxyvoorbeelden mogen geen symlinks zijn.'
+    printf '# Generated example; copy into the HTTPS server block for %s.\n# Keep certificates and the existing server configuration.\nlocation / {\n    proxy_pass http://127.0.0.1:%s;\n    proxy_set_header Host %s;\n    proxy_set_header X-Forwarded-Host %s;\n    proxy_set_header X-Forwarded-Proto https;\n    proxy_set_header X-Forwarded-Port 443;\n    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n    proxy_read_timeout 90s;\n    proxy_buffer_size 16k;\n    proxy_buffers 8 16k;\n    client_max_body_size 20m;\n}\n' "$domain" "$port" "$domain" "$domain" > "$root/.hosting/nginx-location.conf"
+    printf '# Generated example; merge into the existing Caddy configuration.\n%s {\n    reverse_proxy 127.0.0.1:%s\n}\n' "$domain" "$port" > "$root/.hosting/Caddyfile.proxy"
+}
+
 main() {
     if [[ ${1:-} == --help || ${1:-} == -h ]]; then
-        printf 'Gebruik: sudo %s [domeinnaam]\nZet vooraf de A/AAAA-records naar deze server en maak TCP 80/443 bereikbaar.\n' "$0"
+        printf 'Gebruik: sudo %s [domeinnaam]\nZet DNS naar deze server. Bij bezette 80/443 kiest het script een vrije lokale backendpoort voor je bestaande HTTPS-proxy.\n' "$0"
         return
     fi
     [[ $# -le 1 ]] || fail 'Verwacht precies een domeinnaam, zonder andere argumenten.'
-    local domain=${1:-} root value
+    local domain=${1:-} root value occupied edge_id gateway_id gateway_port='' edge_running=false
     local -a engine=(docker --host unix:///var/run/docker.sock)
     if [[ -z $domain ]]; then read -r -p 'Domeinnaam voor PeerCalc: ' domain; fi
     domain=${domain,,}
@@ -142,22 +153,41 @@ main() {
     flock -n 9 || fail 'Er draait al een PeerCalc-hostinginstallatie.'
     configure_hosting "$root" "$domain" "${ACME_EMAIL:-owner@$domain}"
     clear_hosting_overrides
-    local -a compose=("${engine[@]}" compose --project-name peercalc-hosting --env-file .env.hosting -f compose.hosting.yaml)
+    unset COMPOSE_PROFILES
+    occupied=$(collect_occupied_ports "${engine[@]}") || fail 'Bezetting van lokale poorten kon niet veilig worden bepaald.'
+    edge_id=$("${engine[@]}" ps -q --filter label=com.docker.compose.project=peercalc-hosting --filter label=com.docker.compose.service=edge)
+    if [[ -n $edge_id ]]; then edge_running=true; fi
+    gateway_id=$("${engine[@]}" ps -q --filter label=com.docker.compose.project=peercalc-hosting --filter label=com.docker.compose.service=gateway)
+    if [[ -n $gateway_id ]]; then
+        [[ $gateway_id != *$'\n'* ]] || fail 'Meerdere hosting-gateways gevonden; controleer de bestaande installatie.'
+        gateway_port=$("${engine[@]}" inspect "$gateway_id" | jq -r '.[0].NetworkSettings.Ports["8080/tcp"] // [] | map(select(.HostIp == "127.0.0.1") | .HostPort) | unique | if length > 1 then error("Ambiguous gateway ports") else .[0] // "" end')
+    fi
+    configure_deployment "$root" "$occupied" "$edge_running" "$gateway_port" || fail 'Er kon geen veilige hostingpoort worden gekozen.'
+    local -a compose=("${engine[@]}" compose --project-name peercalc-hosting --env-file .env.hosting --env-file .hosting/deployment.env -f compose.hosting.yaml)
+    local -a services=()
+    if [[ $PEERCALC_DEPLOYMENT_MODE == proxy ]]; then
+        compose+=(-f compose.proxy.yaml)
+        services=(gateway)
+        write_proxy_examples "$root" "$domain" "$PEERCALC_HTTP_PORT"
+        printf '80/443 blijven bij je bestaande webserver. PeerCalc-backend: 127.0.0.1:%s\n' "$PEERCALC_HTTP_PORT"
+    fi
     "${compose[@]}" config --quiet
     getent ahosts "$domain" > /dev/null || fail 'Domein resolveert nog niet. Stel eerst DNS in en start opnieuw.'
-    if [[ -z $("${engine[@]}" ps -q --filter label=com.docker.compose.project=peercalc-hosting --filter label=com.docker.compose.service=edge) ]] &&
-        [[ -n $(ss -H -ltn '( sport = :80 or sport = :443 )') ]]; then
-        fail 'Poort 80 of 443 is al bezet. Bestaande webservers worden niet gestopt.'
-    fi
-    if systemctl is-active --quiet firewalld; then
+    if [[ $PEERCALC_DEPLOYMENT_MODE == standalone ]] && systemctl is-active --quiet firewalld; then
         for value in http https; do
             firewall-cmd --permanent --add-service="$value"
             firewall-cmd --add-service="$value"
         done
-    else
+    elif [[ $PEERCALC_DEPLOYMENT_MODE == standalone ]]; then
         printf 'Firewalld is niet actief; controleer zelf de server- en providerfirewall voor TCP 80/443.\n'
     fi
-    "${compose[@]}" up --build -d --wait --wait-timeout 300
+    "${compose[@]}" up --build -d --wait --wait-timeout 300 "${services[@]}"
+    if [[ $PEERCALC_DEPLOYMENT_MODE == proxy ]]; then
+        curl --fail --silent --show-error --noproxy '*' --connect-timeout 5 --max-time 15 "http://127.0.0.1:$PEERCALC_HTTP_PORT/healthz" -o /dev/null
+        [[ $(curl --silent --show-error --noproxy '*' --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PEERCALC_HTTP_PORT/api/projects") == 401 ]] || fail 'De lokale backend is niet correct afgeschermd.'
+        printf '\nBackend gereed op 127.0.0.1:%s (alleen lokaal).\nKoppel https://%s in je bestaande reverse proxy aan deze backend.\nVoorbeelden: %s/.hosting/nginx-location.conf en %s/.hosting/Caddyfile.proxy\nVoor een proxy in Docker: zie docs/HOSTING_RHEL9.md; container-localhost is niet de server.\nAccount: owner@%s; wachtwoord: PEERCALC_OWNER_PASSWORD in .env.hosting.\nPublieke HTTPS/certificaten zijn in deze modus nog NIET geconfigureerd of geverifieerd.\n' "$PEERCALC_HTTP_PORT" "$domain" "$root" "$root" "$domain"
+        return
+    fi
     printf 'Wachten op een geldig publiek HTTPS-certificaat voor %s...\n' "$domain"
     local ready=false
     for value in {1..36}; do

@@ -1,0 +1,7 @@
+services:
+  edge:
+    profiles: [standalone]
+
+  gateway:
+    ports:
+      - "127.0.0.1:${PEERCALC_HTTP_PORT:?Run scripts/host-rhel9.sh first}:8080"

@@ -139,3 +139,40 @@ test('rendered hosting stack uses preserved secrets, fixed project and private i
     assert.deepEqual(Object.entries(config.services).flatMap(([name, service]) => (service.ports ?? []).map(port => [name, Number(port.published)])), [['edge', 80], ['edge', 443]]);
   } finally { rmSync(root, { recursive: true }); }
 });
+
+test('proxy override excludes the edge and publishes only the selected loopback gateway', t => {
+  if (spawnSync('docker', ['compose', 'version']).status !== 0) {
+    t.skip('Docker Compose is required for configuration rendering.');
+    return;
+  }
+  const root = temporaryRepo();
+  try {
+    assert.equal(configure(root).status, 0);
+    const selected = run('configure_deployment "$1" $\'80\\n8788\' false ""', root);
+    assert.equal(selected.status, 0, selected.stderr);
+    const base = fileURLToPath(new URL('../compose.hosting.yaml', import.meta.url));
+    const proxy = fileURLToPath(new URL('../compose.proxy.yaml', import.meta.url));
+    const result = run('clear_hosting_overrides; unset COMPOSE_PROFILES; docker compose --project-name peercalc-hosting --env-file "$1/.env.hosting" --env-file "$1/.hosting/deployment.env" -f "$2" -f "$3" config --format json', root, base, proxy);
+    assert.equal(result.status, 0, result.stderr);
+    const config = JSON.parse(result.stdout);
+    assert.equal(Object.hasOwn(config.services, 'edge'), false);
+    assert.deepEqual(Object.entries(config.services).flatMap(([name, service]) => (service.ports ?? []).map(port => [name, port.host_ip, Number(port.published), port.target])), [['gateway', '127.0.0.1', 8789, 8080]]);
+    assert.equal(config.services.identity.environment.KC_HOSTNAME, 'https://calc.kindo.nl/auth');
+    assert(config.services.login.command.includes('--redirect-url=https://calc.kindo.nl/oauth2/callback'));
+    assert(config.services.login.command.includes('--cookie-secure=true'));
+  } finally { rmSync(root, { recursive: true }); }
+});
+
+test('generated proxy examples use the chosen gateway and do not change base configuration', () => {
+  const root = temporaryRepo();
+  try {
+    assert.equal(configure(root).status, 0);
+    const result = run('write_proxy_examples "$1" calc.kindo.nl 8793', root);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(readFileSync(join(root, '.hosting/nginx-location.conf'), 'utf8'), /proxy_pass http:\/\/127\.0\.0\.1:8793;/);
+    assert.match(readFileSync(join(root, '.hosting/Caddyfile.proxy'), 'utf8'), /calc\.kindo\.nl \{\n    reverse_proxy 127\.0\.0\.1:8793/);
+    assert.equal(statSync(join(root, '.hosting/Caddyfile.proxy')).mode & 0o777, 0o600);
+    assert.notEqual(run('write_proxy_examples "$1" calc.kindo.nl "8793;id"', root).status, 0);
+    assert.equal(readFileSync(join(root, 'infra/peercalc-realm.json'), 'utf8'), readFileSync(realm, 'utf8'));
+  } finally { rmSync(root, { recursive: true }); }
+});

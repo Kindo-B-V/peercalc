@@ -43,6 +43,9 @@ sudo ./scripts/host-rhel9.sh calculatie.your-domain.nl
 Point DNS to the server and make TCP 80/443 reachable first. See
 [RHEL 9 hosting](docs/HOSTING_RHEL9.md) for installation, credentials, updates,
 administration and backup requirements. This does not reuse local Docker data.
+If another webserver already owns 80/443, the installer selects a free loopback
+backend port starting at 8788 instead. Connect the existing HTTPS proxy to that
+backend; the installer does not replace the running proxy or claim TLS is ready.
 
 ## Development
 

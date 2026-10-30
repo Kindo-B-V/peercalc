@@ -1,7 +1,8 @@
 # Hosting Op RHEL 9 En Rocky Linux 9
 
 Het script installeert een aparte Docker-hostingomgeving voor een publiek
-domein. Het publiceert alleen TCP 80 en 443, met automatische HTTPS via Caddy.
+domein. Zonder bestaande webserver publiceert het TCP 80 en 443, met automatische
+HTTPS via Caddy. Anders kiest het een lokale backendpoort voor de bestaande proxy.
 De lokale `compose.yaml`, `.env` en bestaande lokale volumes worden niet gebruikt
 of gemigreerd. Gebruik een aparte server/installatie voor hosting.
 
@@ -12,7 +13,8 @@ of gemigreerd. Gebruik een aparte server/installatie voor hosting.
 - Zet de A- en eventuele AAAA-records van het domein naar deze server. Verwijder
   een AAAA-record dat naar een andere of onbereikbare server wijst.
 - Maak TCP 80/443 bereikbaar in de providerfirewall, router en serverfirewall.
-  Er mag nog geen andere webserver op die poorten luisteren.
+  Bij een bestaande webserver gebruikt het script automatisch een vrije lokale
+  backendpoort; die webserver moet dan het domein afhandelen. Zie hieronder.
 - Een actuele Docker Engine met Compose-plugin wordt geinstalleerd als Docker
   ontbreekt. Bestaande Podman/runc-installaties worden niet verwijderd. Los
   packageconflicten eerst bewust op volgens de [Docker RHEL-installatiegids](https://docs.docker.com/engine/install/rhel/).
@@ -44,15 +46,78 @@ sudo ACME_EMAIL=beheer@jouwdomein.nl ./scripts/host-rhel9.sh calculatie.jouwdome
 
 Zonder dit adres gebruikt de configuratie `owner@<domein>` als ACME-contactadres;
 zorg dan dat die mailbox/alias bestaat. [Caddy vraagt certificaten aan en vernieuwt ze](https://caddyserver.com/docs/automatic-https/).
-Het script wacht op een geldig certificaat voor deze server en controleert dat
+In standalone-modus wacht het script op een geldig certificaat en controleert het dat
 anonieme toegang tot de projecten-API wordt geweigerd. Het gebruikt daarbij geen
 `curl -k` en schakelt SELinux niet uit. Bestandsmounts krijgen SELinux-labels.
 
 Als firewalld draait, opent het script `http` en `https` in de standaardzone,
-zowel direct als permanent. Het herlaadt geen andere firewallregels en zet een
+zowel direct als permanent, alleen in standalone-modus. Het herlaadt geen andere firewallregels en zet een
 uitgeschakelde firewall niet aan, om onder andere SSH-toegang niet te verbreken.
 Controleer zelf of je netwerkinterface een andere zone gebruikt. Docker- en
 providerfirewallregels blijven een verantwoordelijkheid van de serverbeheerder.
+
+## Bezette Poorten: Bestaande Reverse Proxy
+
+Zijn TCP 80 of 443 al bezet door een andere service, dan stopt het script die
+service niet. Het kiest automatisch de eerste vrije TCP-backendpoort vanaf
+8788: 8788, 8789, 8790 enzovoort. Zowel echte listeners als Docker-publicaties
+worden gecontroleerd, ook als Docker geen zichtbare userland-listener gebruikt.
+
+In deze proxy-modus start PeerCalc zonder zijn eigen Caddy-edge. Alleen de
+geauthenticeerde gateway wordt op `127.0.0.1:<gekozen poort>` gepubliceerd,
+niet op een publiek adres. De firewall krijgt geen extra backendpoort. Login,
+cookies en issuer blijven horen bij `https://<domein>`; rechtstreeks HTTP op de
+backend is niet de publieke applicatie en krijgt geen onveilige loginmodus.
+
+De modus en poort staan in `.hosting/deployment.env`, los van de secrets.
+Opnieuw uitvoeren hergebruikt de poort als die vrij is of nog door de eigen
+gateway wordt gebruikt. Heeft een andere service de oude poort overgenomen,
+dan kiest het script opnieuw een vrije poort en waarschuwt dat je de proxyroute
+moet aanpassen. Het wisselt niet spontaan terug naar standalone-modus.
+
+Na een geslaagde backend-start maakt het script twee voorbeelden:
+
+- `.hosting/nginx-location.conf`: plaats de inhoud in het bestaande HTTPS-
+  serverblok voor dit domein; behoud de certificaatinstellingen.
+- `.hosting/Caddyfile.proxy`: voeg het domeinblok samen met de bestaande
+  Caddy-configuratie. Kopieer de inhoud naar die configuratie; `.hosting/` is
+  bewust niet leesbaar voor een onbevoorrechte Caddy-service.
+
+Het script wijzigt of herlaadt de bestaande proxy **niet**. Configureer daar
+ook het certificaat voor dit domein en valideer de configuratie voor je herlaadt.
+De melding "Backend gereed" betekent niet dat publieke HTTPS al is ingesteld.
+Een willekeurige alternatieve HTTPS-poort lost ACME-validatie op 80/443 niet op.
+
+Voor handmatige Compose-bediening in deze modus zijn beide configuratie- en
+env-bestanden nodig. Gebruik niet alleen het standalone-bestand om `up` te doen
+en activeer geen `COMPOSE_PROFILES=standalone` in deze modus:
+
+```sh
+sudo docker --host unix:///var/run/docker.sock compose --project-name peercalc-hosting \
+  --env-file .env.hosting --env-file .hosting/deployment.env \
+  -f compose.hosting.yaml -f compose.proxy.yaml ps
+```
+
+### Proxy In Docker, Zoals Traefik
+
+`127.0.0.1` in een container verwijst naar die container, niet naar de server.
+Verbind alleen je vertrouwde proxy-container met het PeerCalc-netwerk:
+
+```sh
+sudo docker network connect peercalc-hosting_default NAAM_VAN_PROXY_CONTAINER
+```
+
+Gebruik in die proxy `http://peercalc-hosting-gateway-1:8080` als upstream,
+in plaats van de host-loopbackpoort. Configureer voor Traefik een HTTPS-router
+voor het domein met de bestaande entrypoint/certificaatresolver en een
+[HTTP-service](https://doc.traefik.io/traefik/routing/services/) naar deze upstream.
+Netwerkverbindingen, routernamen en certificaatresolvers van een onbekende
+proxy worden niet geraden of automatisch veranderd. Neem de netwerkverbinding
+ook op in het beheer van de bestaande proxy zodat die na recreatie behouden blijft.
+
+Bij host-nginx op SELinux enforcing kan een passende policy voor verbindingen
+naar de backend nodig zijn. Controleer eventuele AVC-meldingen; schakel SELinux
+niet globaal uit om een proxyfout te omzeilen.
 
 ## Aanmelden En Beheren
 
@@ -123,12 +188,13 @@ domeinmigratie moeten DNS, hostname, client-redirects en cookies samen verandere
 ## Data En Back-ups
 
 Compose-project `peercalc-hosting` gebruikt eigen volumes voor documenten,
-PostgreSQL-identiteiten, Redis-sessies en Caddy-certificaten/configuratie. Alleen
-Caddy heeft gepubliceerde netwerkpoorten. Interne HTTP-verbindingen lopen op het
+PostgreSQL-identiteiten, Redis-sessies en Caddy-certificaten/configuratie. In
+standalone-modus publiceert alleen Caddy poorten; in proxy-modus alleen de
+gateway op loopback. Interne HTTP-verbindingen lopen op het
 private Docker-netwerk; de browser gebruikt HTTPS en secure cookies.
 
 Maak voordat je klantdata opslaat een versleutelde, externe back-up met een
-geteste herstelprocedure. Neem `.env.hosting`, de checkout-versie, realmconfig en
+geteste herstelprocedure. Neem `.env.hosting`, de checkout-versie, `.hosting/` en
 de persistente volumes mee. Stop services voor consistente bestandsback-ups;
 gebruik voor een live PostgreSQL-back-up een geschikte databaseback-upmethode.
 Bewaar deze bestanden nooit in Git of publieke supportbijlagen. **Gebruik geen

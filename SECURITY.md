@@ -11,6 +11,11 @@ gateway; administration is through SSH and the container's CLI. See
 [RHEL 9 hosting](docs/HOSTING_RHEL9.md). This does not replace an operational
 security assessment, backup/restore drills or dependency maintenance.
 
+When public ports are occupied, `compose.proxy.yaml` keeps PeerCalc's edge off
+and publishes only its authenticated gateway on an automatically selected
+loopback port. The existing HTTPS proxy must be configured separately. No
+public cleartext fallback or alternate-port certificate bypass is introduced.
+
 ## Identity Boundary
 
 Nginx asks OAuth2 Proxy to authenticate a session and replaces application
