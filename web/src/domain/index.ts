@@ -188,12 +188,21 @@ export function parseProject(text: string): ProjectFile {
     items: raw.items.map(row => {
       if (!object(row) || typeof row.id !== 'string') throw new Error('Invalid native row.');
       const rowType = legacy ? (row.isChapter ? 'chapter' : row.rowType === 'normal' ? 'begrotingspost' : row.rowType) : row.rowType;
-      return createItem({ ...row, rowType: rowType as RowType });
+      const normalized: Record<string, unknown> = { ...row };
+      if (legacy) {
+        const fallbacks = { code: '', description: '', unit: 'st', unitPrice: 0, total: 0,
+          isCollapsed: false, depth: 0, notes: '', ifcGuid: '', nr: '' };
+        for (const [key, fallback] of Object.entries(fallbacks)) if (normalized[key] == null) normalized[key] = fallback;
+        normalized.verrekenbaar = rowType === 'chapter' ? row.verrekenbaar ?? 'V' : null;
+      }
+      return createItem({ ...normalized, rowType: rowType as RowType });
     }),
     spreadsheets: raw.spreadsheets ?? (Array.isArray(raw.subSheets)
       ? { sheets: raw.subSheets, activeSheetId: (raw.subSheets[0] as { id?: string } | undefined)?.id ?? null }
       : defaults.spreadsheets),
   };
+  // New-project rates must not retroactively replace a native document's stored labor prices.
+  if (!Object.hasOwn(raw.schedule, 'tarieven')) delete project.schedule.tarieven;
   validateProject(project);
   if (!project.items.some(row => row.rowType.startsWith('staart_'))
       && !project.schedule.directCostsOnly && !project.schedule.budgetExchange?.directCostsOnly) {

@@ -60,6 +60,7 @@ interface WpCalcStaart {
   code: string;
   volgnr: number;
   itemtype: number;
+  itemstyle: number | null;
   omschrijving: string | null;
   percentage: number | null;
   bedrag: number | null;
@@ -206,6 +207,7 @@ export function importWpCalcFile(buffer: ArrayBuffer): {
         code: String(r.code ?? ''),
         volgnr: num(r.volgnr) || 0,
         itemtype: num(r.itemtype) || 0,
+        itemstyle: num(r.itemstyle),
         omschrijving: r.omschrijving ? String(r.omschrijving) : null,
         percentage: num(r.percentage),
         bedrag: num(r.bedrag),
@@ -437,11 +439,16 @@ export function importWpCalcFile(buffer: ArrayBuffer): {
   for (const source of staartRows) {
     const rowType = resolveWpCalcStaartType(source.code, source.omschrijving ?? '', source.itemtype);
     if (!rowType) {
-    const summary = [0, 4, 32, 64, 128].includes(source.itemtype);
-      if (!summary && ((source.percentage ?? 0) !== 0 || (source.subtotaal ?? 0) !== 0 || (source.bedrag ?? 0) !== 0)) {
+      const summary = [4, 32, 64, 128].includes(source.itemtype);
+      if (!summary && [source.percentage, source.subtotaal, source.bedrag, source.totaal,
+        source.loon, source.materiaal, source.materieel, source.stelpost, source.onderaanneming].some(value => (value ?? 0) !== 0)) {
         throw new Error(`Unsupported WPCalc surcharge: ${source.omschrijving ?? source.itemtype}. Its calculation basis must be mapped before editing.`);
       }
       continue;
+    }
+    // Labels cannot establish an undocumented resource-selection mask.
+    if (source.code !== `peercalc:${rowType}` && source.itemstyle !== (source.itemtype === 1 ? 79 : 32)) {
+      throw new Error(`Unsupported WPCalc surcharge basis: ${source.omschrijving ?? source.itemtype}. Its resource selection must be verified before editing.`);
     }
     const item = makeStaartItem(rowType, source.omschrijving ?? '', source.percentage === null ? null : source.percentage * 100, sortOrder++);
     item.wpcalcStaartRowId = source.recnr;
@@ -481,20 +488,7 @@ export function resolveWpCalcStaartType(code: string, description: string, itemt
   if ([0, 4, 32, 64, 128].includes(itemtype)) return null;
   if (itemtype === 1) return 'staart_ak';
   if (itemtype === 8) return 'staart_wr';
-  const label = description.toLowerCase();
-  if (label.includes('btw') && label.includes('laag')) return 'staart_btw_laag';
-  if (label.includes('btw') || itemtype === 256) return 'staart_btw';
-  if (label.includes('afronding')) return 'staart_afronding';
-  if (label.includes('algemene kosten over onderaanneming')) return 'staart_ak_oa';
-  if (label.includes('algemene bedrijfskosten')) return 'staart_abk';
-  if (label.includes('algemene kosten')) return 'staart_ak';
-  if (label.includes('uitvoeringskosten')) return 'staart_ukk';
-  if (label.includes('garantie')) return 'staart_garanties';
-  if (label.includes('werkvoorbereiding') || label.includes('projectmanagement')) return 'staart_wvpm';
-  if (label.includes('winst') && label.includes('risico')) return 'staart_wr';
-  if (label.includes('risico')) return 'staart_risico';
-  if (label.includes('winst')) return 'staart_winst';
-  if (label.includes('verzekering')) return 'staart_verzekering';
+  if (itemtype === 256) return description.toLowerCase().includes('laag') ? 'staart_btw_laag' : 'staart_btw';
   return null;
 }
 

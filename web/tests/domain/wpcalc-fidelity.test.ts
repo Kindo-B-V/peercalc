@@ -86,11 +86,11 @@ describe('source calculation integrity', () => {
     ];
     source.tables.staart = [
       { recnr: 1, docnr: 1, volgnr: 1, itemtype: 32, omschrijving: 'Direct summary', totaal: 100 },
-      { recnr: 2, docnr: 1, volgnr: 2, itemtype: 1, omschrijving: 'Synthetic overhead', percentage: 0.07, subtotaal: 7 },
+      { recnr: 2, docnr: 1, volgnr: 2, itemtype: 1, itemstyle: 79, omschrijving: 'Synthetic overhead', percentage: 0.07, subtotaal: 7 },
       { recnr: 3, docnr: 1, volgnr: 3, itemtype: 4, omschrijving: 'Cost summary', totaal: 107 },
-      { recnr: 4, docnr: 1, volgnr: 4, itemtype: 8, omschrijving: 'Synthetic bid allowance', percentage: 0.03, subtotaal: 3.21 },
+      { recnr: 4, docnr: 1, volgnr: 4, itemtype: 8, itemstyle: 32, omschrijving: 'Synthetic bid allowance', percentage: 0.03, subtotaal: 3.21 },
       { recnr: 5, docnr: 1, volgnr: 5, itemtype: 64, omschrijving: 'Exclusive summary', totaal: 110.21 },
-      { recnr: 6, docnr: 1, volgnr: 6, itemtype: 256, omschrijving: 'Synthetic VAT', percentage: 0.2, bedrag: 110.21, subtotaal: 22.04 },
+      { recnr: 6, docnr: 1, volgnr: 6, itemtype: 256, itemstyle: 32, omschrijving: 'Synthetic VAT', percentage: 0.2, bedrag: 110.21, subtotaal: 22.04 },
       { recnr: 7, docnr: 1, volgnr: 7, itemtype: 128, omschrijving: 'Inclusive summary', totaal: 132.25 },
     ];
     Object.assign(source.tables.calculaties[0], { totaalexclbtw: 110.21, totaalinclbtw: 132.25 });
@@ -140,5 +140,27 @@ describe('source calculation integrity', () => {
     expect(() => importWpCalc(new ArrayBuffer(0))).toThrow('Unsupported WPCalc surcharge');
     source.tables.staart[0].itemtype = 32;
     expect(getKostprijs(importWpCalc(new ArrayBuffer(0)).items)).toBe(20);
+  });
+
+  it.each(['Winst & Risico', 'Btw hoog', 'Afronding', 'Algemene kosten'])('does not guess unknown numeric surcharge semantics from the label %s', omschrijving => {
+    source.tables.staart = [{ docnr: 1, recnr: 1, itemtype: 16384, omschrijving, percentage: 0.1 }];
+    expect(() => importWpCalc(new ArrayBuffer(0))).toThrow('Unsupported WPCalc surcharge');
+  });
+
+  it.each([null, 7, 64, 999])('does not apply all-resource costs to unverified mask %s', itemstyle => {
+    source.tables.staart = [{ docnr: 1, recnr: 1, itemtype: 1, itemstyle, omschrijving: 'Algemene kosten', percentage: 0.1 }];
+    expect(() => importWpCalc(new ArrayBuffer(0))).toThrow('Unsupported WPCalc surcharge basis');
+  });
+
+  it('does not treat a fixed adjustment or a nonempty unknown type as a presentation-only row', () => {
+    source.tables.staart = [{ docnr: 1, recnr: 1, itemtype: 2, omschrijving: 'Winst & Risico', percentage: 0.1 }];
+    expect(() => importWpCalc(new ArrayBuffer(0))).toThrow('Unsupported WPCalc surcharge');
+    source.tables.staart = [{ docnr: 1, recnr: 1, itemtype: 0, omschrijving: '', loon: 5 }];
+    expect(() => importWpCalc(new ArrayBuffer(0))).toThrow('Unsupported WPCalc surcharge');
+  });
+
+  it('retains explicit PeerCalc bridge semantics rather than inferring them from labels', () => {
+    source.tables.staart = [{ docnr: 1, recnr: 1, itemtype: 1, itemstyle: 64, code: 'peercalc:staart_ak_oa', omschrijving: 'Renamed surcharge', percentage: 0.1 }];
+    expect(importWpCalc(new ArrayBuffer(0)).items.at(-1)?.rowType).toBe('staart_ak_oa');
   });
 });

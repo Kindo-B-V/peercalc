@@ -173,6 +173,27 @@ test("native variants, VAT and target rounding calculate in their visible scope"
   ).toBe(true);
 });
 
+test("native files without a rate table keep their stored hourly prices", async ({ page }) => {
+  test.skip(!process.env.PEERCALC_OWNER_PASSWORD, "Run local setup first.");
+  await login(page);
+  const project = createProject("Historical hourly price");
+  delete project.schedule.tarieven;
+  project.schedule.directCostsOnly = true;
+  project.items = [createItem({ rowType: "regel", description: "Stored labor",
+    quantity: 2, resourceType: "arbeid", normQuantity: 1, tariefGroep: "A",
+    laborPrice: 70, normUnitPrice: 0 })];
+  await page.locator("input[type='file']").setInputFiles({
+    name: "historical-rate.ocs", mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(project)),
+  });
+  await expect(page.locator(".summary-main strong")).toHaveText(/140,00/);
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Bestand exporteren", exact: true }).click();
+  const exported = JSON.parse(await readFile((await (await pending).path())!, "utf8"));
+  expect(Object.hasOwn(exported.schedule, "tarieven")).toBe(false);
+  expect(exported.items[0].laborPrice).toBe(70);
+});
+
 test("an uncalculated source row requires explicit activation before changing the quote", async ({
   page,
 }) => {

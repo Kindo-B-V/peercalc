@@ -42,4 +42,16 @@ The vendor's [feature overview](https://wpcalc.nl/calculatieprogramma-functieove
 
 Next interoperability evidence should include genuine WPCalc-created fixtures for each advanced construct, expected totals before and after changing one quantity, and opening the generated database in WPCalc. Passing the current native/MDB integration tests does not certify that application-level behavior.
 
+Import only assigns foreign surcharge semantics from verified numeric types and
+resource masks: type 1/mask 79 and types 8 or 256/mask 32. An unknown type is not
+made into a percentage charge merely because its label says "winst" or "btw".
+PeerCalc's explicit typed markers remain readable as PeerCalc metadata; they do
+not independently establish target-application compatibility.
+
+The vendor's [trial download](https://wpcalc.nl/calculatieprogramma-bouw-download-demo-pro/)
+is sent after a contact form and CAPTCHA, rather than offered as an unrestricted
+installer. No trial was requested or licensed application installed during this
+delivery. An authorized installer or user-operated Windows readback is still
+needed for the remaining application-level gate.
+
 Fixed-rounding item type 2 was not established by the supplied source or an authoritative specification. Nonzero fixed rounding is therefore rejected; a zero default rounding row is omitted from MDB exports. Resource-selection masks 7 and 64 in fresh-template category-surcharge output are inferred extensions, not target-application verified mappings; the supplied original-file path preserves its verified mask 79. The typed PeerCalc code marker establishes our own reimport identity, not WPCalc's recalculation behavior. These distinctions remain interoperability gaps until target readback is available.

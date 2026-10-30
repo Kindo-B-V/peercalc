@@ -46,9 +46,39 @@ describe('native Open Calc Studio compatibility', () => {
     delete (legacy as Record<string, unknown>).spreadsheets;
     const parsed = parseProject(JSON.stringify(legacy));
     expect(parsed.items[0].rowType).toBe('chapter');
+    expect(parsed.items[0].verrekenbaar).toBe('V');
     expect(parsed.items[0].custom).toBe(123);
     expect(parsed.spreadsheets?.activeSheetId).toBe('s1');
     expect(parsed.version).toBe('2.3.0');
+  });
+
+  it.each([undefined, '1.0.0', '2.0.0', '2.3.0'])('does not retroactively apply default labor rates to native version %s', version => {
+    const source = createProject();
+    source.schedule.directCostsOnly = true;
+    delete source.schedule.tarieven;
+    source.items = [createItem({ rowType: 'regel', description: 'Historical labor rate', quantity: 2,
+      resourceType: 'arbeid', normQuantity: 1, tariefGroep: 'A', laborPrice: 70, normUnitPrice: 0 })];
+    const parsed = parseProject(JSON.stringify({ ...source, version }));
+    expect(Object.hasOwn(parsed.schedule, 'tarieven')).toBe(false);
+    const calculated = calculateProject(parsed);
+    expect(calculated.items[0].laborPrice).toBe(70);
+    expect(getKostprijs(calculated.items)).toBe(140);
+    expect(Object.hasOwn(parseProject(stringifyProject(calculated)).schedule, 'tarieven')).toBe(false);
+  });
+
+  it('uses the upstream nullish defaults for version-one chapters and keeps explicit settlement classes', () => {
+    const source = createProject();
+    const legacy = { ...source, version: '1.0.0', items: [
+      { id: 'chapter-default', parentId: null, rowType: 'normal', isChapter: true, code: null, description: null,
+        unit: null, unitPrice: null, total: null, isCollapsed: null, depth: null, notes: null, ifcGuid: null, nr: null, custom: 'retained' },
+      { id: 'chapter-explicit', parentId: null, rowType: 'normal', isChapter: true, verrekenbaar: 'N' },
+      { id: 'post', parentId: 'chapter-default', rowType: 'normal', verrekenbaar: 'V' },
+    ] };
+    const parsed = parseProject(JSON.stringify(legacy));
+    expect(parsed.items[0]).toMatchObject({ rowType: 'chapter', code: '', description: '', unit: 'st', unitPrice: 0,
+      total: 0, isCollapsed: false, depth: 0, notes: '', ifcGuid: '', nr: '', verrekenbaar: 'V', custom: 'retained' });
+    expect(parsed.items[1].verrekenbaar).toBe('N');
+    expect(parsed.items[2]).toMatchObject({ rowType: 'begrotingspost', verrekenbaar: null });
   });
 
   it('honors direct-cost-only files without introducing surcharges', () => {
@@ -218,7 +248,8 @@ describe('WPCalc MDB import', () => {
   });
 
   it('maps combined W&R once and supports renamed rows with explicit bridge markers', () => {
-    expect(resolveWpCalcStaartType('', 'Winst & Risico', 2)).toBe('staart_wr');
+    expect(resolveWpCalcStaartType('', 'Winst & Risico', 8)).toBe('staart_wr');
+    expect(resolveWpCalcStaartType('', 'Winst & Risico', 2)).toBeNull();
     expect(resolveWpCalcStaartType('peercalc:staart_winst', 'Mijn opslag', 2)).toBe('staart_winst');
     expect(resolveWpCalcStaartType('', 'Btw laag', 256)).toBe('staart_btw_laag');
     expect(resolveWpCalcStaartType('', 'Totaal kolommen', 32)).toBeNull();

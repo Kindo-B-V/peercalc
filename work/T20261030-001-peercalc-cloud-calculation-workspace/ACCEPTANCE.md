@@ -21,9 +21,10 @@ Private browser artifacts are deliberately excluded from the public repository.
 
 ## Final Local Checks
 
-- 56 domain/live-converter tests and 6 storage/API tests passed.
+- 71 domain/live-converter tests and 6 storage/API tests passed.
 - 21 Java converter/index-constraint tests passed through Maven and Docker.
-- 8 browser tests passed, including the opt-in private-file workflow.
+- 9 browser tests passed, including the opt-in private-file workflow and native
+  files with omitted optional labor-rate tables.
 - The private browser round-trip compared 13 tables and 46,054 fields, with no
   unexpected differences; only 27 documented derived-cache/timestamp changes.
 - TypeScript, local credential setup self-test, Docker build/startup, and Compose
@@ -34,6 +35,35 @@ Private browser artifacts are deliberately excluded from the public repository.
 The user's existing private estimate was refreshed only after matching its
 original bytes, name and revision, using compare-and-swap from revision 1 to 2.
 The original saved revision remains available. No source database was modified.
+
+## Follow-Up Fidelity Audit
+
+The previous goal turn made progress: the product was committed, published, and
+passed its first remote CI run. The follow-up audit found and corrected two
+native migration defects: omitted labor-rate tables must not inherit new-project
+defaults, and version-one chapters use the upstream nullish settlement/text
+defaults. Regression cases failed before the fixes and now pass.
+
+The actual pinned upstream reader/writer accepted PeerCalc exports of all three
+public native fixtures. Items, schedule, company information, spreadsheets and
+snapshots survived upstream save/read unchanged. A headless oracle bundled the
+unmodified upstream file service and calculator; only the uninitialized UI
+translation dependency was stubbed. Mixed subcontract/labor resource allocation
+intentionally differs from an upstream pricing bug, as disclosed in NOTICE.md;
+same file format does not require duplicating that bug.
+
+Full recreation of all six Docker services retained the owner identity and
+authenticated session, both existing projects and all three stored revisions.
+Complete document hashes and revision metadata matched before and after, and
+the browser remained authenticated on reload. No volume was removed.
+
+Unknown foreign surcharge types/masks no longer acquire guessed semantics from
+their descriptions. The supplied source still passes the complete private
+round-trip. Advanced mappings remain open, not declared supported by rejection.
+Official vendor trial access requires contact details and CAPTCHA; no request
+was submitted. The user was asked to recalculate the private exported file in
+the original application. Until that evidence is available, the full goal stays
+active rather than claiming certified legacy interoperability.
 
 ## Latest User Direction
 
