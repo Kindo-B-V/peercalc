@@ -4,6 +4,7 @@ outputs/
 .playwright-mcp/
 .ticket-workflow.lock
 .ovis/
+.hosting/
 converter/target/
 *.log
 .env*

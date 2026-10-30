@@ -1,7 +1,15 @@
 # Security and Operating Boundaries
 
-This initial Docker delivery is for local use. It binds only `127.0.0.1:8788`.
+The default Docker delivery is for local use. It binds only `127.0.0.1:8788`.
 Do not change that to a public interface and treat it as production hosting.
+
+The separate `compose.hosting.yaml` profile and `scripts/host-rhel9.sh` provide
+a single-server HTTPS hosting baseline. They use automatic TLS, secure cookies,
+production-mode Keycloak with PostgreSQL, closed registration and private
+application ports. The admin/master realm routes are blocked at the public
+gateway; administration is through SSH and the container's CLI. See
+[RHEL 9 hosting](docs/HOSTING_RHEL9.md). This does not replace an operational
+security assessment, backup/restore drills or dependency maintenance.
 
 ## Identity Boundary
 
@@ -18,6 +26,7 @@ server's simulated sign-in is a convenience, not authentication.
 ## Secrets and Local Data
 
 Local setup generates unique secrets in mode-0600 `.env`, which Git ignores.
+Hosting setup uses a separate mode-0600 `.env.hosting` and ignored `.hosting/`.
 Never commit it, runtime `.dev.vars`, session cookies, or document volumes. Do
 not attach customer files to public issues. The converter token is server-only.
 

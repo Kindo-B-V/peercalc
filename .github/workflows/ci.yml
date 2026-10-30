@@ -12,7 +12,14 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: node --test scripts/configure-local.test.mjs
+      - run: node --test scripts/*.test.mjs
+      - name: Validate Hosting Configuration
+        run: |
+          source scripts/host-rhel9.sh
+          configure_hosting "$PWD" calc.example.com owner@calc.example.com
+          clear_hosting_overrides
+          docker compose --env-file .env.hosting -f compose.hosting.yaml config --quiet
+          docker compose --env-file .env.hosting -f compose.hosting.yaml run --rm --no-deps edge caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - run: npm ci --no-audit --no-fund
         working-directory: web
       - run: npm run typecheck && npm test && npm run build
