@@ -51,6 +51,17 @@ test('Compose must use saved hosting values instead of exported shell overrides'
   assert.equal(result.status, 0, result.stderr);
 });
 
+test('host package setup reuses installed curl-minimal and installs curl only when absent', () => {
+  const installed = run('curl() { :; }; dnf() { printf "%s\\n" "$@"; }; install_host_packages');
+  assert.equal(installed.status, 0, installed.stderr);
+  assert.equal(installed.stdout.trim().split('\n').includes('curl'), false);
+  const missing = run('PATH=/nonexistent; dnf() { printf "%s\\n" "$@"; }; install_host_packages');
+  assert.equal(missing.status, 0, missing.stderr);
+  assert.equal(missing.stdout.trim().split('\n').includes('curl'), true);
+  assert(installed.stdout.includes('dnf-plugins-core'));
+  assert(missing.stdout.includes('dnf-plugins-core'));
+});
+
 function temporaryRepo() {
   const root = mkdtempSync(join(tmpdir(), 'peercalc-hosting-'));
   mkdirSync(join(root, 'infra'));

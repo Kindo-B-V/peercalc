@@ -26,4 +26,9 @@ case without disabling the safety boundary. The existing Docker repository is
 also prescribed by the official Rocky Linux 9 Docker guide; no speculative
 repository switch or uninstall is needed.
 
+An actual Rocky 9.5 container accepted the platform guard, then reproduced a
+second prerequisite failure: its preinstalled curl-minimal conflicts with the
+full curl package. Package setup now reuses any installed curl and requests curl
+only when it is absent. No automatic package erasure or replacement is added.
+
 Code fix confirmed: Yes

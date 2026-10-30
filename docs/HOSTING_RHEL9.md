@@ -21,6 +21,8 @@ Rocky Linux 9 wordt expliciet herkend, inclusief 9.5. Het script gebruikt de
 Docker RHEL-repository die ook de [officiele Rocky-installatiegids](https://docs.rockylinux.org/9/gemstones/containers/docker/)
 voorschrijft. Andere distributies en hoofdversies worden niet alleen op basis
 van `ID_LIKE=rhel` toegelaten. De bestaande scriptnaam blijft behouden.
+Een reeds aanwezige `curl-minimal` wordt gebruikt; het script forceert geen
+vervanging door het conflicterende volledige curl-pakket.
 
 ## Installeren
 

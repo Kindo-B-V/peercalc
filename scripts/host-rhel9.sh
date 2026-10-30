@@ -31,6 +31,13 @@ check_rhel() {
     [[ ( $ID == rhel || $ID == rocky ) && $VERSION_ID =~ ^9(\.|$) ]] || fail "Dit script ondersteunt RHEL 9 en Rocky Linux 9; aangetroffen: ${ID:-onbekend} ${VERSION_ID:-onbekend}. Controleer /etc/os-release."
 }
 
+install_host_packages() {
+    local -a packages=(dnf-plugins-core openssl jq util-linux iproute)
+    # Rocky/RHEL's curl-minimal already supports our HTTPS and --resolve requests.
+    if ! command -v curl > /dev/null; then packages+=(curl); fi
+    dnf -y install "${packages[@]}"
+}
+
 configure_hosting() (
     local root=$1 domain=$2 email=$3 tmp='' key value line
     local -A seen=()
@@ -112,7 +119,7 @@ main() {
     [[ -f $root/compose.hosting.yaml && -f $root/web/Dockerfile ]] || fail 'Start het script vanuit de volledige PeerCalc-repository.'
     cd "$root"
     trap 'printf "Hosting niet afgerond. Controleer de fout hierboven; data en secrets zijn behouden.\n" >&2' ERR
-    dnf -y install dnf-plugins-core openssl jq curl util-linux iproute
+    install_host_packages
     if ! command -v docker > /dev/null; then
         for value in podman podman-docker runc; do
             if rpm -q "$value" > /dev/null 2>&1; then
